@@ -9,7 +9,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
-
+import org.bukkit.configuration.file.FileConfiguration;
 import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
@@ -32,7 +32,6 @@ import me.mrCookieSlime.Slimefun.api.item_transport.ItemTransportFlow;
 public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements EnergyNetComponent {
 
     private static final int ENERGY_CONSUMPTION = 240;
-
     private final EntityType entity;
     private final boolean forceDisableAI;
     private final boolean defaultDisabledAI;
@@ -139,6 +138,17 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
 
 
     protected void tick(Block b) {
+        FileConfiguration config = getAddon().getJavaPlugin().getConfig();
+        int tickDelay = config.getInt("spawner-settings.tick-delay", 20);
+
+        String storedTick = BlockStorage.getLocationInfo(b.getLocation(), "last_spawn_tick");
+        long lastTick = storedTick != null ? Long.parseLong(storedTick) : 0L;
+        long currentTick = b.getWorld().getFullTime();
+
+        if (currentTick - lastTick < tickDelay) {
+            return;
+        }
+
         if (BlockStorage.getLocationInfo(b.getLocation(), "enabled").equals("false")) {
             return;
         }
@@ -167,6 +177,8 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
                     BlockStorage.getLocationInfo(b.getLocation(), "disable_ai").equals("true");
             mob.setAware(!disableAI);
         }
+
+        BlockStorage.addBlockInfo(b, "last_spawn_tick", String.valueOf(currentTick));
     }
 
     @Override
