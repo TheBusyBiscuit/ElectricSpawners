@@ -41,10 +41,10 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
         super(category, new SlimefunItemStack("ELECTRIC_SPAWNER_" + mob, "db6bd9727abb55d5415265789d4f2984781a343c68dcaf57f554a5e9aa1cd",
                 "&ePowered Spawner &7(" + ChatUtils.humanize(mob) + ")",
                 "",
-                "&8\u21E8 &e\u26A1 &7Max Entity Cap: 6",
-                "&8\u21E8 &e\u26A1 &7512 J Buffer",
-                "&8\u21E8 &e\u26A1 &7240 J/Mob",
-                forceDisableAI ? "&8\u21E8 &c&lAI Forcefully Disabled" : ""
+                "&8⇨ &e⚡ &7Max Entity Cap: 6",
+                "&8⇨ &e⚡ &7512 J Buffer",
+                "&8⇨ &e⚡ &7240 J/Mob",
+                forceDisableAI ? "&8⇨ &c&lAI Forcefully Disabled" : ""
         ), RecipeType.ENHANCED_CRAFTING_TABLE, new ItemStack[] {
                 null, SlimefunItems.PLUTONIUM, null,
                 SlimefunItems.ELECTRIC_MOTOR, new CustomItemStack(Material.SPAWNER, "&bReinforced Spawner", "&7Type: &b" + ChatUtils.humanize(type.toString())), SlimefunItems.ELECTRIC_MOTOR,
@@ -71,14 +71,14 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
             @Override
             public void newInstance(BlockMenu menu, Block b) {
                 if (!BlockStorage.hasBlockInfo(b) || BlockStorage.getLocationInfo(b.getLocation(), "enabled") == null || BlockStorage.getLocationInfo(b.getLocation(), "enabled").equals("false")) {
-                    menu.replaceExistingItem(4, new CustomItemStack(Material.GUNPOWDER, "&7Enabled: &4\u2718", "", "&e> Click to enable this Machine"));
+                    menu.replaceExistingItem(4, new CustomItemStack(Material.GUNPOWDER, "&7Enabled: &4✘", "", "&e> Click to enable this Machine"));
                     menu.addMenuClickHandler(4, (p, slot, item, action) -> {
                         BlockStorage.addBlockInfo(b, "enabled", "true");
                         newInstance(menu, b);
                         return false;
                     });
                 } else {
-                    menu.replaceExistingItem(4, new CustomItemStack(Material.REDSTONE, "&7Enabled: &2\u2714", "", "&e> Click to disable this Machine"));
+                    menu.replaceExistingItem(4, new CustomItemStack(Material.REDSTONE, "&7Enabled: &2✔", "", "&e> Click to disable this Machine"));
                     menu.addMenuClickHandler(4, (p, slot, item, action) -> {
                         BlockStorage.addBlockInfo(b, "enabled", "false");
                         newInstance(menu, b);
@@ -137,16 +137,8 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
         return ENERGY_CONSUMPTION;
     }
 
-    private static final long SPAWN_COOLDOWN_TICKS = 20L; // 1 second (20 ticks) This too fast?
-    private long lastSpawnTick = 0L;
 
     protected void tick(Block b) {
-        long currentTick = b.getWorld().getFullTime();
-
-        if (currentTick - lastSpawnTick < SPAWN_COOLDOWN_TICKS) {
-            return;
-        }
-
         if (BlockStorage.getLocationInfo(b.getLocation(), "enabled").equals("false")) {
             return;
         }
@@ -175,7 +167,6 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
                     BlockStorage.getLocationInfo(b.getLocation(), "disable_ai").equals("true");
             mob.setAware(!disableAI);
         }
-        lastSpawnTick = currentTick;
     }
 
     @Override
