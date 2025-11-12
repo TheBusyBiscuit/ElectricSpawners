@@ -1,5 +1,10 @@
 options:
   auto-update: true
+spawner-settings:
+  tick-delay: 80  # Delay in ticks per mob spawn task (20 ticks = 1 second)
+mob-ai:
+  force-disable: false # If true, all spawned mobs will have AI disabled and players cannot toggle
+  default-disabled: false # Default state for new spawners if force-disable is false
 mobs:
 - BLAZE
 - CAVE_SPIDER
