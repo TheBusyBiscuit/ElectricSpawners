@@ -5,6 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
@@ -34,23 +35,26 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
     private static int lifetime = 0;
 
     private final EntityType entity;
+    private final boolean forceDisableAI;
+    private final boolean defaultDisabledAI;
 
-    public ElectricSpawner(ItemGroup category, String mob, EntityType type, Research research) {
-        // @formatter:off
+    public ElectricSpawner(ItemGroup category, String mob, EntityType type, Research research, boolean forceDisableAI, boolean defaultDisabledAI) {
         super(category, new SlimefunItemStack("ELECTRIC_SPAWNER_" + mob, "db6bd9727abb55d5415265789d4f2984781a343c68dcaf57f554a5e9aa1cd",
                 "&ePowered Spawner &7(" + ChatUtils.humanize(mob) + ")",
                 "",
                 "&8\u21E8 &e\u26A1 &7Max Entity Cap: 6",
                 "&8\u21E8 &e\u26A1 &7512 J Buffer",
-                "&8\u21E8 &e\u26A1 &7240 J/Mob"
+                "&8\u21E8 &e\u26A1 &7240 J/Mob",
+                forceDisableAI ? "&8\u21E8 &c&lAI Forcefully Disabled" : ""
         ), RecipeType.ENHANCED_CRAFTING_TABLE, new ItemStack[] {
-                null, SlimefunItems.PLUTONIUM, null, 
+                null, SlimefunItems.PLUTONIUM, null,
                 SlimefunItems.ELECTRIC_MOTOR, new CustomItemStack(Material.SPAWNER, "&bReinforced Spawner", "&7Type: &b" + ChatUtils.humanize(type.toString())), SlimefunItems.ELECTRIC_MOTOR,
                 SlimefunItems.BLISTERING_INGOT_3, SlimefunItems.LARGE_CAPACITOR, SlimefunItems.BLISTERING_INGOT_3
         });
-        // @formatter:on
 
         this.entity = type;
+        this.forceDisableAI = forceDisableAI;
+        this.defaultDisabledAI = defaultDisabledAI;
 
         addItemHandler(onBlockPlace());
 
@@ -59,7 +63,7 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
             @Override
             public void init() {
                 for (int i = 0; i < 9; i++) {
-                    if (i != 4) {
+                    if (i != 4 && (!forceDisableAI && i != 7)) {
                         addItem(i, new CustomItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE, " "), (p, slot, item, action) -> false);
                     }
                 }
@@ -82,6 +86,25 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
                         return false;
                     });
                 }
+
+                if (!forceDisableAI) {
+                    boolean disableAI = BlockStorage.getLocationInfo(b.getLocation(), "disable_ai") == null ?
+                            defaultDisabledAI :
+                            BlockStorage.getLocationInfo(b.getLocation(), "disable_ai").equals("true");
+
+                    menu.replaceExistingItem(7, new CustomItemStack(
+                            disableAI ? Material.ZOMBIE_HEAD : Material.PLAYER_HEAD,
+                            "&7Mob AI: " + (disableAI ? "&4Disabled" : "&2Enabled"),
+                            "",
+                            "&e> Click to toggle Mob AI"
+                    ));
+
+                    menu.addMenuClickHandler(7, (p, slot, item, action) -> {
+                        BlockStorage.addBlockInfo(b, "disable_ai", String.valueOf(!disableAI));
+                        newInstance(menu, b);
+                        return false;
+                    });
+                }
             }
 
             @Override
@@ -100,13 +123,13 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
 
     private BlockPlaceHandler onBlockPlace() {
         return new BlockPlaceHandler(false) {
-
             @Override
             public void onPlayerPlace(BlockPlaceEvent e) {
                 Block b = e.getBlock();
                 Player p = e.getPlayer();
                 BlockStorage.addBlockInfo(b, "enabled", "false");
                 BlockStorage.addBlockInfo(b, "owner", p.getUniqueId().toString());
+                BlockStorage.addBlockInfo(b, "disable_ai", String.valueOf(forceDisableAI || defaultDisabledAI));
             }
         };
     }
@@ -132,7 +155,6 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
         for (Entity n : b.getWorld().getNearbyEntities(b.getLocation(), 4.0, 4.0, 4.0)) {
             if (n.getType().equals(this.entity)) {
                 count++;
-
                 if (count > 6) {
                     return;
                 }
@@ -140,13 +162,20 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
         }
 
         removeCharge(b.getLocation(), getEnergyConsumption());
-        b.getWorld().spawnEntity(new Location(b.getWorld(), b.getX() + 0.5D, b.getY() + 1.5D, b.getZ() + 0.5D), this.entity);
+        Location spawnLoc = new Location(b.getWorld(), b.getX() + 0.5D, b.getY() + 1.5D, b.getZ() + 0.5D);
+        Entity spawned = b.getWorld().spawnEntity(spawnLoc, this.entity);
+
+        if (spawned instanceof Mob) {
+            Mob mob = (Mob) spawned;
+            boolean disableAI = forceDisableAI ||
+                    BlockStorage.getLocationInfo(b.getLocation(), "disable_ai").equals("true");
+            mob.setAware(!disableAI);
+        }
     }
 
     @Override
     public BlockTicker getItemHandler() {
         return new BlockTicker() {
-
             @Override
             public void tick(Block b, SlimefunItem sf, Config data) {
                 ElectricSpawner.this.tick(b);
@@ -161,7 +190,6 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
             public boolean isSynchronized() {
                 return true;
             }
-
         };
     }
 
@@ -174,5 +202,4 @@ public class ElectricSpawner extends SimpleSlimefunItem<BlockTicker> implements 
     public EnergyNetComponentType getEnergyComponentType() {
         return EnergyNetComponentType.CONSUMER;
     }
-
 }

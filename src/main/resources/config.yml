@@ -1,5 +1,8 @@
 options:
   auto-update: true
+mob-ai:
+  force-disable: false # If true, all spawned mobs will have AI disabled and players cannot toggle
+  default-disabled: false # Default state for new spawners if force-disable is false
 mobs:
 - BLAZE
 - CAVE_SPIDER
